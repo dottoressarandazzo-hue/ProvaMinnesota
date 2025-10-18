@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quiz MMPI-2 Interattivo (20 Domande Vero/Falso)</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #f7f9fb; color: #111; margin: 0; padding: 20px; }
+        .container { max-width: 900px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 6px 18px rgba(0,0,0,0.08); }
+        h1 { font-size: 20px; margin: 0 0 12px; }
+        .meta { font-size: 13px; color: #555; margin-bottom: 12px; }
+        .progress-wrapper { position: relative; margin-bottom: 14px; }
+        .progress-line { position: absolute; bottom: -6px; left: 0; height: 4px; background: #2b66ff; border-radius: 2px; transition: width 0.4s ease; width: 0; }
+        .progress-bar { display: flex; flex-wrap: wrap; gap: 3px; max-height: 140px; overflow-y: auto; }
+        .square { width: 20px; height: 20px; font-size: 11px; display: flex; align-items: center; justify-content: center; border: 1px solid #ccc; border-radius: 3px; background: #eee; transition: all 0.3s; }
+        .square.correct { background: #a8f0a3; border-color: #52a74d; color: #06410a; }
+        .square.wrong { background: #ffb3b3; border-color: #f1b7b7; color: #5a1b1b; }
+        .square.current { border: 2px solid #2b66ff; background: #dce6ff; }
+        .question-box { padding: 18px; border-radius: 8px; border: 1px solid #e6eef6; background: #fbfdff; min-height: 120px; display: flex; align-items: center; }
+        .qnum { font-weight: 700; margin-right: 10px; }
+        .qtext { font-size: 18px; }
+        .controls { margin-top: 18px; display: flex; gap: 12px; flex-wrap: wrap; }
+        .btn { padding: 12px 18px; border-radius: 8px; border: 0; font-size: 16px; cursor: pointer; transition: 0.3s; }
+        .btn:hover { opacity: 0.9; }
+        .btn-true { background: #e6ffed; }
+        .btn-false { background: #fff1f0; }
+        .btn-next { background: #e8f0ff; }
+        .btn-back { background: #f0f0f0; }
+        .feedback { margin-top: 14px; padding: 12px; border-radius: 8px; font-weight: 700; display: none; }
+        .correctfb { background: #e6ffed; border: 1px solid #9be4b5; color: #083d11; }
+        .wrongfb { background: #fff1f0; border: 1px solid #f1b7b7; color: #5a1b1b; }
+        .bottom { margin-top: 18px; display: flex; justify-content: space-between; align-items: center; }
+        .small { font-size: 13px; color: #666; }
+        .restart { background: #fff4d6; border-radius: 8px; padding: 8px 12px; border: 1px solid #f0d49b; cursor: pointer; }
+        .profile-btn { background: #ffdcfa; border-radius: 8px; padding: 8px 12px; border: 1px solid #f0b7e4; cursor: pointer; text-decoration: none; color: #333; font-size: 13px; }
+        #results { display: none; margin-top: 20px; padding: 15px; border: 1px solid #e6eef6; border-radius: 8px; }
+        #results h2 { margin: 0 0 10px; }
+        #results ul { list-style-type: none; padding: 0; }
+        #results li { margin-bottom: 10px; }
+        @media (max-width: 600px) { .qtext { font-size: 16px; } .controls { flex-direction: column; } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Quiz MMPI-2 — Esercitazione Vero/Falso (20 Domande)</h1>
+        <div class="meta">Rispondi <strong>Vero</strong> o <strong>Falso</strong>. I numeri in alto compaiono in sequenza; la barra avanza man mano che rispondi.</div>
+        <div class="progress-wrapper">
+            <div class="progress-bar" id="progressBar"></div>
+            <div class="progress-line" id="progressLine"></div>
+        </div>
+        <div id="quiz">
+            <div class="question-box">
+                <div><div class="qnum" id="qnum">1.</div><div class="qtext" id="qtext">Caricamento...</div></div>
+            </div>
+            <div class="controls">
+                <button class="btn btn-true" id="btnTrue">Vero</button>
+                <button class="btn btn-false" id="btnFalse">Falso</button>
+                <button class="btn btn-next" id="btnNext" style="display:none">Avanti →</button>
+                <button class="btn btn-back" id="btnBack">← Indietro</button>
+            </div>
+            <div id="feedback" class="feedback"></div>
+            <div class="bottom">
+                <div class="small">Domande totali: <span id="totalCount">20</span></div>
+                <div id="progress">Domanda 0 / 20</div>
+            </div>
+            <div style="margin-top:12px;display:flex;gap:8px">
+                <button class="restart" id="restart">Ricomincia (nuovo ordine)</button>
+            </div>
+        </div>
+        <div id="results">
+            <h2>Risultati del Quiz</h2>
+            <p id="score"></p>
+            <h3>Domande sbagliate:</h3>
+            <ul id="wrongAnswers"></ul>
+            <p>Hai sbagliato alcune domande? Contattami!</p>
+            <p>Fai uno screenshot e mandamelo in chat!</p>
+            <a href="https://www.instagram.com/dott.ssamlrandazzo?igsh=MW44MHZ2MWJvN281OQ==" class="profile-btn" target="_blank">Invia al mio profilo Instagram</a>
+            <button class="restart" id="restartResults">Ricomincia il quiz</button>
+        </div>
+    </div>
+    <script>
+        const allQuestions = [
+            {num: 1, text: "Mi piacciono le riviste di meccanica", answer: false},
+            {num: 2, text: "Ho un buon appetito", answer: true},
+            {num: 3, text: "Mi sveglio fresco e riposato quasi tutte le mattine", answer: true},
+            {num: 4, text: "Penso che mi piacerebbe lavorare come bibliotecario", answer: false},
+            {num: 5, text: "Vengo facilmente svegliato dai rumori", answer: false},
+            {num: 6, text: "Mio padre è una buona persona, o (se suo padre è morto) mio padre è stato una buona persona", answer: true},
+            {num: 7, text: "Mi piace leggere gli articoli di cronaca nera", answer: false},
+            {num: 8, text: "Di solito ho le mani e i piedi abbastanza caldi", answer: false},
+            {num: 9, text: "La mia vita di ogni giorno è piena di cose che mi interessano", answer: true},
+            {num: 10, text: "Sono capace di lavorare come lo sono sempre stato", answer: true},
+            {num: 11, text: "Molto spesso mi sembra di avere un nodo alla gola", answer: false},
+            {num: 12, text: "Sono soddisfatto della mia vita sessuale", answer: true},
+            {num: 13, text: "Le persone dovrebbero cercare di capire i loro sogni, esserne guidate e trarne consiglio", answer: false},
+            {num: 14, text: "Mi piacciono i racconti di spionaggio o polizieschi", answer: false},
+            {num: 15, text: "Lavoro sotto una forte tensione nervosa", answer: false},
+            {num: 16, text: "A volte penso a cose così cattive da non poterne parlare", answer: false},
+            {num: 17, text: "Sono sicuro che la vita mi tratta male", answer: false},
+            {num: 18, text: "Soffro di attacchi di nausea e di vomito", answer: false},
+            {num: 19, text: "Quando inizio un nuovo lavoro cerco di capire a chi è importante essere simpatici", answer: false},
+            {num: 20, text: "Molto raramente soffro di stitichezza", answer: true},
+            {num: 21, text: "A volte ho desiderato molto andare via da casa", answer: false},
+            {num: 22, text: "Nessuno sembra capirmi", answer: false},
+            {num: 23, text: "A volte scoppio a ridere o a piangere senza riuscire a controllarmi", answer: false},
+            {num: 24, text: "A volte sono posseduto dagli spiriti maligni", answer: false},
+            {num: 25, text: "Mi piacerebbe essere un cantante", answer: false},
+            {num: 26, text: "Quando sono nei guai, penso che la cosa migliore sia di non parlarne a nessuno", answer: false},
+            {num: 27, text: "Quando uno mi fa un torto, sento che dovrei fargliela pagare, se possibile, magari solo per principio", answer: false},
+            {num: 28, text: "Ho disturbi di stomaco diverse volte alla settimana", answer: false},
+            {num: 29, text: "A volte mi viene voglia di imprecare", answer: false},
+            {num: 30, text: "Spesso la notte ho degli incubi", answer: false},
+            {num: 31, text: "Mi riesce difficile concentrarmi su un compito o su un lavoro", answer: false},
+            {num: 32, text: "Ho avuto esperienze molto strane e insolite", answer: false},
+            {num: 33, text: "Mi preoccupo raramente della mia salute", answer: true},
+            {num: 34, text: "Mai mi sono trovato nei guai a causa del mio comportamento sessuale", answer: true},
+            {num: 35, text: "Qualche volta, da ragazzo, ho rubato delle cose", answer: false},
+            {num: 36, text: "Ho quasi sempre la tosse", answer: false},
+            {num: 37, text: "A volte mi viene voglia di fracassare qualcosa", answer: false},
+            {num: 38, text: "Ho avuto periodo di giorni, settimane o mesi in cui mi era difficile combinare qualcosa, perché non riuscivo ad incominciare", answer: false},
+            {num: 39, text: "Ho il sonno agitato e disturbato", answer: false},
+            {num: 40, text: "Quasi sempre mi sembra che la testa mi faccia male dappertutto", answer: false},
+            {num: 41, text: "Non sempre dico la verità", answer: true},
+            {num: 42, text: "Se la gente non ce l’avesse avuta con me, avrei potuto avere molto più successo", answer: false},
+            {num: 43, text: "La mia capacità di giudizio è migliore di quanto sia mai stata", answer: true},
+            {num: 44, text: "Una volta la settimana o più spesso, mi sento improvvisamente tutto caldo senza alcuna ragione", answer: false},
+            {num: 45, text: "Sono in buona salute fisica come la maggior parte dei miei amici", answer: true},
+            {num: 46, text: "Se incontro vecchi compagni di scuola o conoscenti che non vedo da molto tempo, preferisco far finta di niente, a meno che non siano loro i primi a parlarmi", answer: false},
+            {num: 47, text: "Non soffro quasi mai di dolori nella regione del cuore o al torace", answer: true},
+            {num: 48, text: "Me ne starei quasi sempre a sognare ad occhi aperti piuttosto che fare qualsiasi altra cosa", answer: false},
+            {num: 49, text: "Sono una persona molto socievole", answer: true},
+            {num: 50, text: "Spesso ho dovuto prendere ordini da qualcuno che ne sapeva meno di me", answer: false}
+        ];
+        let questions = [], order = [], idx = 0, answered = {};
+        function selectRandomQuestions() {
+            const indices = Array.from({length: allQuestions.length}, (_, i) => i);
+            for (let i = indices.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [indices[i], indices[j]] = [indices[j], indices[i]];
+            }
+            questions = indices.slice(0, 20).map(i => allQuestions[i]);
+        }
+        function shuffle(a) {
+            for (let i = a.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [a[i], a[j]] = [a[j], a[i]];
+            }
+        }
+        function start() {
+            selectRandomQuestions();
+            order = questions.map((_, i) => i);
+            shuffle(order);
+            idx = 0;
+            answered = {};
+            document.getElementById('quiz').style.display = 'block';
+            document.getElementById('results').style.display = 'none';
+            renderProgress();
+            update();
+        }
+        function renderProgress() {
+            const bar = document.getElementById('progressBar');
+            bar.innerHTML = '';
+            order.forEach((_, i) => {
+                const d = document.createElement('div');
+                d.className = 'square';
+                d.innerText = questions[order[i]].num;
+                bar.appendChild(d);
+            });
+            document.getElementById('progressLine').style.width = '0%';
+        }
+        function refreshColors() {
+            const bar = document.getElementById('progressBar').children;
+            order.forEach((qI, i) => {
+                const s = bar[i];
+                s.classList.remove('correct', 'wrong', 'current');
+                if (answered[qI] !== undefined) {
+                    s.classList.add(answered[qI] ? 'correct' : 'wrong');
+                }
+                if (i === idx) {
+                    s.classList.add('current');
+                }
+            });
+            document.getElementById('progressLine').style.width = ((idx + 1) / order.length * 100) + '%';
+        }
+        function showResults() {
+            const correctCount = Object.values(answered).filter(x => x).length;
+            const total = order.length;
+            document.getElementById('quiz').style.display = 'none';
+            document.getElementById('results').style.display = 'block';
+            document.getElementById('score').innerText = `Hai risposto correttamente a ${correctCount} su ${total} domande (${Math.round(correctCount / total * 100)}%).`;
+            const wrongList = document.getElementById('wrongAnswers');
+            wrongList.innerHTML = '';
+            order.forEach((qI) => {
+                if (answered[qI] === false) {
+                    const q = questions[qI];
+                    const li = document.createElement('li');
+                    li.innerText = `Domanda ${q.num}: ${q.text} (Risposta corretta: ${q.answer ? 'Vero' : 'Falso'})`;
+                    wrongList.appendChild(li);
+                }
+            });
+            if (wrongList.children.length === 0) {
+                const li = document.createElement('li');
+                li.innerText = 'Nessuna risposta sbagliata!';
+                wrongList.appendChild(li);
+            }
+        }
+        function update() {
+            if (idx >= order.length) { showResults(); return; }
+            const q = questions[order[idx]];
+            document.getElementById('qnum').innerText = q.num + '.';
+            document.getElementById('qtext').innerText = q.text;
+            document.getElementById('progress').innerText = 'Domanda ' + (idx + 1) + ' / ' + order.length;
+            const fb = document.getElementById('feedback');
+            fb.style.display = 'none';
+            if (answered[order[idx]] !== undefined) {
+                const correct = q.answer;
+                fb.className = 'feedback ' + (answered[order[idx]] ? 'correctfb' : 'wrongfb');
+                fb.innerText = (answered[order[idx]] ? 'Corretto!' : 'Sbagliato. Risposta corretta: ' + (correct ? 'Vero' : 'Falso')) + ' (Domanda ' + q.num + ')';
+                fb.style.display = 'block';
+                document.getElementById('btnTrue').style.display = 'none';
+                document.getElementById('btnFalse').style.display = 'none';
+                document.getElementById('btnNext').style.display = 'inline-block';
+            } else {
+                document.getElementById('btnTrue').style.display = 'inline-block';
+                document.getElementById('btnFalse').style.display = 'inline-block';
+                document.getElementById('btnNext').style.display = 'none';
+            }
+            refreshColors();
+        }
+        function answer(g) {
+            if (idx >= order.length || answered[order[idx]] !== undefined) return;
+            const q = questions[order[idx]];
+            const correct = q.answer;
+            const ok = (g === correct);
+            answered[order[idx]] = ok;
+            const fb = document.getElementById('feedback');
+            fb.className = 'feedback ' + (ok ? 'correctfb' : 'wrongfb');
+            fb.innerText = (ok ? 'Corretto!' : 'Sbagliato. Risposta corretta: ' + (correct ? 'Vero' : 'Falso')) + ' (Domanda ' + q.num + ')';
+            fb.style.display = 'block';
+            document.getElementById('btnTrue').style.display = 'none';
+            document.getElementById('btnFalse').style.display = 'none';
+            document.getElementById('btnNext').style.display = 'inline-block';
+            refreshColors();
+        }
+        document.getElementById('btnTrue').onclick = () => answer(true);
+        document.getElementById('btnFalse').onclick = () => answer(false);
+        document.getElementById('btnNext').onclick = () => { idx++; update(); };
+        document.getElementById('btnBack').onclick = () => { if (idx > 0) { idx--; update(); } };
+        document.getElementById('restart').onclick = start;
+        document.getElementById('restartResults').onclick = start;
+        start();
+    </script>
+</body>
+</html>
